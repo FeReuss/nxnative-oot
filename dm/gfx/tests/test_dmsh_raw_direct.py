@@ -100,6 +100,22 @@ class RawDirect(Translated):
         run_on_gpu(self, kernel)
 
 
+STG = (0x004fe2000c101904, 0x0000000502007986)   # STG.E desc[UR4][R2.64], R5: R2 the thread index, an address the translator traces to no storage buffer
+
+
+@unittest.skipUnless(os.environ.get('DMSH_TEST_XLATE'), 'set DMSH_TEST_XLATE to the offline translator')
+class RawDirectStoreWindow(Translated):
+    """A raw store reaches memory only for an address in the ranges macOS gives the GPU's buffers: [0x10_0000_0000, 0x70_0000_0000) (an M1 Pro) and [0x100_0000_0000, 0x200_0000_0000) (an M4:
+    its pool buffers sit above 2^40, and a window of the first alone dropped every store and atomic of the game's shaders, the foliage's culling among them)"""
+    def test_the_store_helper_takes_both_ranges(self):
+        code = (s2r_tid(2), s2r_tid(5), STG)
+        msl = self.translate(b''.join(inst(*waiting(i)) for i in code) + inst(*EXIT), shared=0x1000, raw_direct=True)
+        helper = msl[msl.index('static inline'):msl.index('kernel void main0')]
+        self.assertRegex(helper, r'uint\(_\d+\) < 96u')    # [0x10, 0x70) of the address's high word
+        self.assertRegex(helper, r'_\d+ - 256;')
+        self.assertRegex(helper, r'uint\(_\d+\) < 256u')   # [0x100, 0x200)
+
+
 LDG128 = ((LDG[0] & ~(7 << 9)) | 6 << 9, (LDG[1] & ~(0xff << 16)) | 12 << 16)   # LDG.E.128 R12, [R5.64 + UR4]: size bits 73..75 = 6 (B128), R12..R15
 def sts(rb, off): return (STORE[0], (STORE[1] & ~(0xffffffff << 32)) | rb << 32 | off << 40)   # STS.U32 [R9 * 16 + off], Rb
 VEC_HELPER = re.compile(r'(?m)^int (_\d+)\(thread const int& _\d+, thread const int& _\d+, thread spvUnsafeArray<uint, 3>& (_\d+)\)\n\{\n')

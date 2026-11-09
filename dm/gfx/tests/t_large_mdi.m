@@ -27,18 +27,20 @@ static void begin(NVNcommandBuffer *cb, uint8_t *data, size_t size) {
     h_nvnCommandBufferBeginRecording(cb);
 }
 
-static int run(prog_t *pg, uint8_t *pool, int indexed, int maximum, int count, int lit_at, int stride) {
+// pool: where the CPU reaches the bytes; game: the address the game holds for them (the same, but for a virtual pool under shader_raw_direct, where it is Metal's GPU address)
+static int run(prog_t *pg, uint8_t *pool, uint64_t game, int indexed, int maximum, int count, int lit_at, int stride) {
     // The only nonempty argument record covers the target. Padding also checks that replay uses the supplied stride.
     uint32_t *ind = (void *)(pool + 256);
-    uint64_t base = (uint64_t)(uintptr_t)pool, arguments = base + 256;
+    uint64_t base = game, arguments = base + 256;
     uint32_t *indices = (void *)(pool + 64);
     indices[0] = 0;
     indices[1] = 1;
     indices[2] = 2;
     memset(ind, 0, N * STRIDE);
+    uint64_t offset = stride < 0 ? (uint64_t)(maximum - 1) * STRIDE : 0;
     if (stride < 0)
-        arguments += (uint64_t)(maximum - 1) * STRIDE;
-    uint32_t *sentinel = (void *)(uintptr_t)(arguments + (uint64_t)lit_at * (uint64_t)stride);
+        arguments += offset;
+    uint32_t *sentinel = (void *)(pool + 256 + offset + (uint64_t)lit_at * (uint64_t)stride);
     sentinel[1] = 1;
 
     NVNcommandBuffer cb = {0}, parent = {0};
@@ -163,17 +165,17 @@ int main(void) {
         serial_put(pg.serial, pr);
         int failures = 0; // NOLINT(clang-analyzer-osx.cocoa.RetainCount): serial_put retains pr in g_by_serial and serial_del releases it after the draws.
         for (int indexed = 0; indexed <= 1; indexed++) {
-            failures += !run(&pg, pool, indexed, 1024, 1024, 1023, STRIDE);
-            failures += !run(&pg, pool, indexed, 1025, 1025, 1024, STRIDE);
-            failures += !run(&pg, pool, indexed, 4594, 4593, 4593, STRIDE);
-            failures += !run(&pg, pool, indexed, 4594, 8192, 4594, STRIDE);
-            failures += !run(&pg, pool, indexed, 8192, 8192, 8191, STRIDE);
-            failures += !run(&pg, pool, indexed, 4594, 4594, 4593, -STRIDE);
-            failures += !run(&pg, pool, indexed, 1025, 1, 0, 0);
-            failures += !run(&pg, pool, indexed, INT_MAX, 2, 1, STRIDE);
+            failures += !run(&pg, pool, (uint64_t)(uintptr_t)pool, indexed, 1024, 1024, 1023, STRIDE);
+            failures += !run(&pg, pool, (uint64_t)(uintptr_t)pool, indexed, 1025, 1025, 1024, STRIDE);
+            failures += !run(&pg, pool, (uint64_t)(uintptr_t)pool, indexed, 4594, 4593, 4593, STRIDE);
+            failures += !run(&pg, pool, (uint64_t)(uintptr_t)pool, indexed, 4594, 8192, 4594, STRIDE);
+            failures += !run(&pg, pool, (uint64_t)(uintptr_t)pool, indexed, 8192, 8192, 8191, STRIDE);
+            failures += !run(&pg, pool, (uint64_t)(uintptr_t)pool, indexed, 4594, 4594, 4593, -STRIDE);
+            failures += !run(&pg, pool, (uint64_t)(uintptr_t)pool, indexed, 1025, 1, 0, 0);
+            failures += !run(&pg, pool, (uint64_t)(uintptr_t)pool, indexed, INT_MAX, 2, 1, STRIDE);
         }
-        failures += !run(&pg, alias, 0, 4594, 4594, 4593, STRIDE);
-        failures += !run(&pg, alias, 1, 8192, 8192, 8191, STRIDE);
+        failures += !run(&pg, mtl_gva_on() ? pool : alias, (uint64_t)(uintptr_t)alias, 0, 4594, 4594, 4593, STRIDE);
+        failures += !run(&pg, mtl_gva_on() ? pool : alias, (uint64_t)(uintptr_t)alias, 1, 8192, 8192, 8191, STRIDE);
         h_nvnMemoryPoolFinalize(&virt);
         h_nvnMemoryPoolFinalize(&physical);
         serial_del(pg.serial);

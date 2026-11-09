@@ -722,7 +722,12 @@ static gva_ent *g_gva; static int g_ngva, g_gva_cap; static os_unfair_lock g_gva
 static _Atomic uint64_t g_gva_min = ~0ull, g_gva_max;
 static nvn_hmap g_gva_key = {.klen = 8};   // pool start (mtl_pool_add's mem) → its GPU address, under g_gva_lk
 int mtl_gva_on(void) { return DM_GAME_SHADER_RAW_DIRECT; }   // the profile's shader_raw_direct: its shaders access raw global memory at Metal's addresses, so the host must hand them out
+// The ranges of GPU addresses the translator lets a raw store or atomic reach (Ryujinx GlobalToStorage.TryGenerateRawDirectOp): an M1 Pro's pool buffers sit in the first, an M4's (macOS 26) in the second.
+// A buffer outside both would have all its stores dropped without a sign, as an M4's did under the first alone (no foliage): the host says so
+static int gva_in_window(uint64_t a) { return (a >> 32) - 0x10 < 0x60 || (a >> 32) - 0x100 < 0x100; }
 static void gva_add(uint64_t glo, uint64_t len, uint64_t cpu, const void *key, uint64_t key_gpu) {
+    { static int said; if (!said && len && !(gva_in_window(glo) && gva_in_window(glo + len - 1))) { said = 1;
+        MLOG("[RED] a pool buffer at GPU address %#llx..%#llx is outside the ranges the chain's raw stores and atomics reach ([0x10_0000_0000, 0x70_0000_0000), [0x100_0000_0000, 0x200_0000_0000)): they are dropped there (GlobalToStorage.TryGenerateRawDirectOp)", (unsigned long long)glo, (unsigned long long)(glo + len)); } }
     os_unfair_lock_lock(&g_gva_lk);
     nvn_hm_put(&g_gva_key, &key, (void *)(uintptr_t)key_gpu);
     if (g_ngva == g_gva_cap) { g_gva_cap = g_gva_cap ? g_gva_cap * 2 : 256; g_gva = realloc_or_die(g_gva, (size_t)g_gva_cap * sizeof *g_gva, "the GPU address table"); }

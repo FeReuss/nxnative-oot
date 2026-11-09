@@ -1075,8 +1075,8 @@ namespace Ryujinx.Graphics.Shader.Translation.Optimizations
         // nxnative (the job's raw_direct, a profile's shader_raw_direct): the host hands the game Metal's own GPU addresses (nvn_mtl.m mtl_pool_add), so an address the shader
         // loaded from memory is accessed as it is, with no pool table and no search: the search's registers held Ocarina of Time's raw-memory shaders at 384 threads a threadgroup on an M1 Pro,
         // a direct access lets them reach 576. A load has no check: an Apple GPU reads 0 at an address nothing is mapped at (null, a stray CPU address), as a lookup that found no pool
-        // returned, and any branch around it (even one that only returns 0) took the 576 back to 384. A store or an atomic outside [0x10_0000_0000, 0x70_0000_0000), the range macOS
-        // keeps for the GPU's addresses, is dropped. Stores and atomics set the bit of their 2 MiB chunk in the write log (GmemLogBits bits: 16 GiB of GPU addresses before two
+        // returned, and any branch around it (even one that only returns 0) took the 576 back to 384. A store or an atomic outside [0x10_0000_0000, 0x70_0000_0000) and
+        // [0x100_0000_0000, 0x200_0000_0000), the ranges macOS keeps for the GPU's addresses (an M1 Pro's pool buffers sit in the first, an M4's in the second), is dropped. Stores and atomics set the bit of their 2 MiB chunk in the write log (GmemLogBits bits: 16 GiB of GPU addresses before two
         // chunks share a bit, which only makes the host learn one pool too many), which the host maps back to pools (nvn_mtl.m gml_read)
         private const int GmemLogBits = 1 << GmemMapLog2;
 
@@ -1118,7 +1118,9 @@ namespace Ryujinx.Graphics.Shader.Translation.Optimizations
 
             if (writes)
             {
-                context.BranchIfFalse(lblSkip, context.ICompareLessUnsigned(context.ISubtract(addrHigh, Const(0x10)), Const(0x60)));
+                Operand inLow = context.ICompareLessUnsigned(context.ISubtract(addrHigh, Const(0x10)), Const(0x60));    // [0x10_0000_0000, 0x70_0000_0000): an M1 Pro's pool buffers
+                Operand inHigh = context.ICompareLessUnsigned(context.ISubtract(addrHigh, Const(0x100)), Const(0x100));   // [0x100_0000_0000, 0x200_0000_0000): an M4's (macOS 26 gives it its buffers from 2^40)
+                context.BranchIfFalse(lblSkip, context.BitwiseOr(inLow, inHigh));
 
                 Operand chunk = context.BitwiseAnd(
                     context.BitwiseOr(context.ShiftLeft(addrHigh, Const(32 - GmemHintShift)), context.ShiftRightU32(addrLow, Const(GmemHintShift))), Const(GmemLogBits - 1));

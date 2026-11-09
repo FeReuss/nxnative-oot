@@ -112,10 +112,12 @@ int main(void) { @autoreleasepool {
         CHECK("the whole pool has an entry", g_big[0].full > 0 && g_pools[g_big[0].full - 1].end == base + GB);
         CHECK("lookups take it", look(base + 900 * MB, 4096).length == GB);
     }
-    // The lookup hint of a 2 MiB chunk: tagged with the chunk, names the entry holding all of it, and a chunk only partly inside has none of its own
-    {
+    // The lookup hint of a 2 MiB chunk: tagged with the chunk, names the entry holding all of it, and a chunk only partly inside has none of its own. The hint is 32 bits (the chunk
+    // in the high 19), so a chunk at or above 2^40 has none: Metal puts a pool's buffer there on some Macs (macOS 26 on an M4), and shader_raw_direct's shaders do not read hints
+    uint64_t hchunk = (mtl_gva_on() ? big_gpu(0, base + 900 * MB) : base + 900 * MB) >> DMSH_GMEM_HINT_SHIFT;
+    if (hchunk < (1ull << 19)) {
         const uint8_t *map = (const uint8_t *)gmem_map().contents;
-        uint64_t chunk = (mtl_gva_on() ? big_gpu(0, base + 900 * MB) : base + 900 * MB) >> DMSH_GMEM_HINT_SHIFT;
+        uint64_t chunk = hchunk;
         uint32_t hint; memcpy(&hint, map + (chunk % DMSH_GMEM_MAP_ENTRIES) * DMSH_GMEM_MAP_ENTRY + 24, sizeof hint);
         unsigned entry = hint % DMSH_GMEM_MAP_ENTRIES;
         CHECK("the hint names its chunk and an entry", entry && hint / DMSH_GMEM_MAP_ENTRIES == chunk);

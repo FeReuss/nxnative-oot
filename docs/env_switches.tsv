@@ -133,7 +133,7 @@ DM_NVN_CLEARLOG	diagnostic	`=1` logs the first 40 colour clears drawn as a trian
 DM_NVN_CMDSTAT	diagnostic	`=1` logs every 300 frames the command recording usage: bytes and records per frame, command memory segment sizes, out-of-memory callbacks, host segments, count and bytes per command type
 DM_NVN_COUNT	diagnostic	`1` counts every NVN call (the counting trampolines) and writes the per-frame call lines; off by default (on with a `DM_NVN_TSV` table that has call rows), the count is an atomic add all recording threads share
 DM_NVN_CPUPROF	diagnostic	1 records CPU wall/time/instruction totals by renderer operation; off by default.
-DM_NVN_CSH_BARRIER	switch	`0` makes a game barrier between the draws of a pass stop the compute hoist's scan, as before (`DM_NVN_CS_HOIST`); by default a dispatch moves ahead of the pass past such a barrier
+DM_NVN_CSH_BARRIER	switch	`1` lets the compute hoist (`DM_NVN_CS_HOIST`) move a dispatch ahead of the pass past a game barrier between its draws; off by default, where such a barrier stops the scan (the hoist's regression check, `t_perf_order`, expects that)
 DM_NVN_CSH_PRESCAN	diagnostic	`0` runs the compute-hoist scan at every pass's first draw even when no dispatch follows (as before; for timing)
 DM_NVN_CS_HOIST	switch	`0` makes a compute dispatch between the draws of a pass end it (on by default: the dispatch runs ahead of the pass when that changes nothing the draws before it read)
 DM_NVN_CUT	switch	`=<draws>`: the replay commits its command buffer every that many draws, between passes (default 64; `0` one command buffer per submission, except the cut after a buffer-to-texture copy)

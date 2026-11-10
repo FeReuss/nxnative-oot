@@ -10,7 +10,7 @@ import unittest
 path = Path(__file__).resolve().parents[1] / 'tools/dmsh_build.py'
 nodes = [n for n in ast.parse(path.read_text()).body if isinstance(n, ast.FunctionDef) and n.name in ('early_fragment_tests', 'job_for')]
 sys.path.insert(0, str(path.parent)); import dmsh_ampere
-scope = {'struct': struct, 'os': os, 'dmsh_ampere': dmsh_ampere, 'FACTS': {}, 'tf_layout': lambda key, ctl: None, 'vertex_ab': lambda key, code, ctl: None}
+scope = {'struct': struct, 'os': os, 'dmsh_ampere': dmsh_ampere, 'FACTS': {}, 'tf_layout': lambda key, ctl: None, 'vertex_ab': lambda key, code, ctl: None, 'RAW_DIRECT': False}   # job_for reads RAW_DIRECT (PR #1833's shader_raw_direct); these checks are about the early-fragment flag
 exec(compile(ast.Module(body=nodes, type_ignores=[]), str(path), 'exec'), scope)
 early = scope['early_fragment_tests']; job_for = scope['job_for']
 

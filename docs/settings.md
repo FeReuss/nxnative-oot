@@ -37,6 +37,8 @@ The size of the 3D picture, from 50 to 100 %. Below 100 % the size is fixed ther
 
 A game whose own dynamic resolution steps through sizes of its own offers those instead of a slider. Ocarina of Time: **Game's own** (1.0), the default, which is the game's full size, 1920 × 1080 docked and 1440 × 810 handheld with the whole GPU, and which its dynamic resolution may lower (down to 854 × 480 docked) when the **Dynamic resolution** switch under it is on; or one of the game's sizes fixed: 1920 × 1080, 1820 × 1024, 1707 × 960, 1593 × 896, 1493 × 840, 1365 × 768 or 1280 × 720 docked (1440 × 810 down to 960 × 540 handheld). A fixed size stays the same at every [GPU share](#gpu-share), up to the share's whole picture (1707 × 960 docked at 67 %). A lower size is blurrier and hardly lighter: the game's GPU time on a Mac depends little on its size (on a MacBook Air M4 1280 × 720 gave 45.4 fps in Hyrule Field, 1920 × 1080 44.9).
 
+Hades II goes up to 300 %: it renders its whole picture, the HUD and text included, at 1280x720 docked and handheld, and above 100 % it renders larger instead of being scaled up: 150 % is 1920x1080, 200 % 2560x1440, 300 % 3840x2160. Sharper on a large screen or window, at more GPU time (about 2.5 times the GPU time at 200 % on an Apple M6); on a small screen the difference is slight. [Its note](../dm/games/0100A00019DE0000/README.md#rendering) has the measurements.
+
 ### Console mode
 
 **Docked** renders at the Switch's TV resolution, **Handheld** at its lower handheld resolution, which is lighter on the phone and can give a higher frame rate. **Auto**, the default, is the mode the game was tested in (shown beside it, **Auto (Docked)** for most games), and follows a later build that changes it; picking **Docked** or **Handheld** keeps that mode.
@@ -270,7 +272,7 @@ A line like `DM_PRESENT_SNAP=0` in `Documents/env.txt` (in the Files app, under 
 | Setting | Variable | Values |
 |---|---|---|
 | Frame rate | `DM_FPS_TARGET` | `30`, `60`, `120` (Mac, games with `fps_max 120`) |
-| Render scale | `DM_RENDER_SCALE` | `0.5` to `1.0` (`1.0`: the game's own size) |
+| Render scale | `DM_RENDER_SCALE` | `0.5` to `1.0` (`1.0`: the game's own size; Hades II: to `3.0`) |
 | Console mode | `DM_OPMODE` | `auto` the game's tested mode, `1` docked, `0` handheld |
 | GPU share | `DM_GFX_SCALE` | `auto` the game's tested share, `0` the whole GPU, `1` 80 %, `2` 67 % |
 | Game language | `DM_LANG` | a language code, such as `ja` |

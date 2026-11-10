@@ -197,6 +197,14 @@ class LauncherSettingsTests(unittest.TestCase):
         self.assertNotIn('auto', build(BOTW, 'nvn')['DM_FPS_TARGET'], 'a row without an auto option has no auto field')
         aspect = build(BOTW, 'nvn')['DM_SCREEN_ASPECT'] if 'DM_SCREEN_ASPECT' in build(BOTW, 'nvn') else None
         if aspect: self.assertNotIn('auto', aspect, 'Picture shape\'s auto (match the screen) defaults to no profile macro: a value of its own')
+    def test_render_scale_reaches_the_stubs_largest_scale(self):
+        """The rewriter writes a render-scale stub's largest scale as RENDER_SCALE: 1 keeps the table's range (a stub that only lowers the size), 3 raises its top (Hades II)"""
+        for value, top in (('1', 1.0), ('3', 3.0)):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as tmp, \
+                    patch.object(settings.nacp, 'languages', return_value=['en-US']), patch.dict(os.environ, {'GFXAPI': 'nvn'}):
+                (Path(tmp) / 'main.fixups.tsv').write_text(f'# RENDER_SCALE\t{value}\n')
+                row = {s['env']: s for s in settings.build(BOTW, tmp, Path(tmp) / 'control.nacp')['settings']}['DM_RENDER_SCALE']
+            self.assertEqual((row['min'], row['max']), (0.5, top))
 
     def test_table_format_is_strict(self):
         good = 'DM_X\ttoggle\t-\t0\talways\tGame\tX\n'

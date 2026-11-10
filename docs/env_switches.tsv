@@ -149,6 +149,7 @@ DM_NVN_FB_DEPTH	switch	`0` lets a draw that samples the depth attachment of its 
 DM_NVN_FB_SNAP	switch	Draws that sample a colour attachment of their own render pass: unset, those that write it (or follow a write in the pass) read a snapshot, reused until the game's next barrier; `0` none; `all` a fresh snapshot for every draw that samples one (slow, diagnostic, no tile reads)
 DM_NVN_FB_TILE	switch	`0` makes such draws that sample the attachment at their own pixel (a projective sample at the vertex shader's screen varying) read a snapshot too, instead of the tile
 DM_NVN_FLUSH_FILL	switch	`0` starts a new GPU texture in a CPU-writable pool as zeros; by default one whose storage the game flushed before its first use is filled from that storage once
+DM_NVN_FRAG_ORDER	switch	`0` makes every game barrier wait for all earlier GPU work at the next draw pass, as before; by default a barrier that only orders fragments (`ORDER_FRAGMENTS`, with texture, descriptor or zcull invalidation) relies on the relaxed end of the pass before (`draw_barriers game`); `ab` alternates with `DM_AB`
 DM_NVN_FRAMES	diagnostic	`=<N>` prints the NVN call table frame by frame for the first N frames (default 3)
 DM_NVN_FUSE_CHECK	diagnostic	`=1` checks pass merging in the same frame: renders the merged passes again apart and logs the comparison of the attachments every time
 DM_NVN_GEOMETRY_COLOR	switch	full retains inactive geometry color attachments; default omits them only when attachment bounds and state prove equivalence.
@@ -164,6 +165,7 @@ DM_NVN_GEO_MESH	switch	`0` draws passthrough geometry pairs that have a mesh lib
 DM_NVN_GEO_MESH_RUN	switch	`0` dispatches every mesh geometry draw on its own; by default consecutive mesh draws of one pair whose result does not depend on their order are drawn as one dispatch (`geo_mesh_take`)
 DM_NVN_GPUPROF	diagnostic	`=<f>`, `<f1>-<f2>` or `every:<n>`: logs the GPU start and duration of every encoder of those frames (`[gpuprof]` lines from Metal 4 counter heap timestamps)
 DM_NVN_GPU_TS	switch	`segment` or `submission`: what timestamp reports record (GPU start / end of the segment holding each report, or one time for the whole submission), instead of the profile's `gpu_timestamps`
+DM_NVN_HEAP_RELAX	diagnostic	`0` turns the relaxed draw-pass barriers of `DM_NVN_BARRIER=game` (`draw_barriers game`) off while image family heaps exist; on by default, `ab` alternates with the `DM_AB` phases
 DM_NVN_HILITE	diagnostic	`=<fragment shader key>,…`: those draws use a solid colour instead (magenta, green, cyan, yellow, blue, white in order), to tell wrong geometry from wrong shading
 DM_NVN_INDLOG	diagnostic	`=<n>`: the first n indirect draws (and those of pass-dumped frames) log their arguments at encode and as the GPU left them once the submission completed, with the first indices
 DM_NVN_IXCLOG	diagnostic	`=<n>` logs the first n indirect draw and dispatch conversions (record to arguments) once the GPU has run them
@@ -176,6 +178,7 @@ DM_NVN_PASSDUMP	diagnostic	`=<f>`, `<f1>-<f2>` or `every:<n>`: logs every render
 DM_NVN_PASSDUMP_ALL	diagnostic	`=1` makes `DM_NVN_PASSDUMP` record every draw and binding change, not only the first per pass and stage, including copies and inline uniform updates
 DM_NVN_PASSGPU	diagnostic	`=<file>` writes the GPU time of each render and compute pass from stage-boundary timestamp counters (off under Metal 4); also gives each dispatch its own encoder
 DM_NVN_PASSGPU_SERIAL	diagnostic	`=1` makes each encoder on the main command buffer wait until all earlier work has finished, so `DM_NVN_PASSGPU` times read each pass's exclusive time (totals read high)
+DM_NVN_PASS_OVERLAP	switch	`0` ends every draw pass with a barrier before the next one's fragments, as before; by default the next pass waits for the earlier ones only when the game set a barrier since or when it attaches one of their textures (same level and layers), so passes NVN does not order may run side by side; `ab` alternates with `DM_AB`
 DM_NVN_POOL_CHUNKS	switch	`0` wraps a memory pool of 512 MB or more whole in one buffer, as before; by default it is wrapped in overlapping 16 MB chunks made as draws reach them, so only the parts in use are wired
 DM_NVN_PREDICT	switch	`0` turns off the parallel precompile look-ahead: a pipeline miss compiles only the pipeline it needs
 DM_NVN_PREFETCH	switch	`0` turns off loading a program's shader libraries in the background when the game makes it (`nvnProgramSetShaders`); they load at its first draw instead

@@ -54,3 +54,9 @@ tex_flush_upload	on
 tex_dirty_upload	on
 # The replay's Metal encoding on a thread of its own, as on iOS: the submit thread no longer waits for each pass's encoding, the GPU of a MacBook Air M4 starves less at segment boundaries (frame p50 24.5 → 23.5 ms at 1920x1080 docked, the Hyrule Field view)
 enc_thread	on
+# The graphics scale tier the game sees (oe::GetCurrentGraphicsScale): 0, the whole GPU (the game at its full size). The launcher's GPU share (DM_GFX_SCALE) picks the lighter modes 1 and 2
+gfx_scale	0
+# The launcher's Render scale (patches.py's render-scale stub): the game's picture with the whole GPU, docked and handheld (ModelSceneExtensionParam's ResolutionParam), and the
+# levels its own dynamic resolution steps through (DynamicResolutionParam's ResolutionReduceScale: 1080 down to 480 lines docked). The launcher offers Dynamic and the levels from 0.5
+render_base	2560x1440 1920x1080
+render_levels	0.75 0.71112 0.66667 0.62223 0.58334 0.53334 0.5 0.4445 0.37223 0.33334

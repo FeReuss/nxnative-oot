@@ -60,3 +60,6 @@ gfx_scale	0
 # levels its own dynamic resolution steps through (DynamicResolutionParam's ResolutionReduceScale: 1080 down to 480 lines docked). The launcher offers Dynamic and the levels from 0.5
 render_base	2560x1440 1920x1080
 render_levels	0.75 0.71112 0.66667 0.62223 0.58334 0.53334 0.5 0.4445 0.37223 0.33334
+# The game's compute dispatches with no barrier of its between them run side by side (nvn_mtl.m dispatch_enc): on the kokiri-deck route GPU p50 15.63 -> 14.76 ms (docked,
+# Apple M4 Pro, three runs a side), the pictures alike
+dispatch_overlap	on

@@ -158,13 +158,10 @@ int main(void) { @autoreleasepool {
         CHECK("an unread one is still not made", UNREAD(e2, 302));
         CHECK("a read render target no pass wrote stays the dummy", e2[303] == dummy);
         os_unfair_lock_unlock(&g_rmu); finish();
-        // Another texture in a read ID: an ID that held a made texture keeps its mark, so the next walk makes the replacement (DM_NVN_POOL_SEEN_KEEP=0: cleared, as before); an emptied ID
-        // is cleared, and an ID given its first texture has not been read
-        const char *ke = getenv("DM_NVN_POOL_SEEN_KEEP"); int keep = !(ke && !strcmp(ke, "0"));
+        // Another texture in a read ID keeps the ID's mark, so the next walk makes the replacement; an emptied ID is cleared, and an ID given its first texture has not been read
         tex_t t4 = rd; t4.serial = 99804; t4.mem = mem + 130 * MB; t4.off = 130 * MB;
         mtl_reg_tex(301, &un, NULL);
-        if (keep) CHECK("an ID whose made texture is replaced keeps its read mark", pool_seen(301));
-        else CHECK("DM_NVN_POOL_SEEN_KEEP=0: an ID given another texture has not been read", !pool_seen(301));
+        CHECK("an ID given another texture keeps its read mark", pool_seen(301));
         mtl_reg_tex(301, NULL, NULL); CHECK("an emptied ID has not been read", !pool_seen(301));
         mtl_reg_tex(304, &t4, NULL); CHECK("an ID given its first texture has not been read", !pool_seen(304));
         mtl_reg_tex(302, NULL, NULL); mtl_reg_tex(303, NULL, NULL); mtl_reg_tex(304, NULL, NULL); mtl_tex_release(&rd); mtl_tex_release(&un); mtl_drain(); hog = nil;

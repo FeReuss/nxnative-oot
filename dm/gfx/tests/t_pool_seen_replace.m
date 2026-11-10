@@ -1,6 +1,6 @@
-// A historically read texture ID keeps its mark across streaming replacements.
+// A texture ID a shader has read keeps its read mark when the game puts another texture into it, and loses it only when emptied (mtl_reg_tex).
 // Zero ordinary walk room exercises first-table materialization and GPU pixels.
-// Finalize-before-replace, unread IDs and unwritten render targets stay distinct.
+// Finalize-before-replace, a read ID whose texture is not made yet, unread IDs and unwritten render targets stay distinct.
 #include "../nvn/nvn_mtl.m"
 void *front_metal_layer(void) { return NULL; }
 module_t *module_of(const void *p) { (void)p; return NULL; }
@@ -41,8 +41,7 @@ static int pixel_is(int i, uint8_t v) {
 }
 int main(void) { @autoreleasepool {
     mtl_init();
-    const char *e = getenv("DM_NVN_POOL_SEEN_KEEP"); int keep = !(e && !strcmp(e, "0"));
-    enum { LEN = 1 << 20, N = 6 };
+    enum { LEN = 1 << 20, N = 7 };
     uint8_t *mem = mmap(NULL, LEN, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0); if (mem == MAP_FAILED) abort();
     pool_t p = {.magic=MAGIC('P','O','O','L'), .mem=mem, .size=LEN, .flags=NVN_MEMORY_POOL_FLAGS_CPU_UNCACHED | NVN_MEMORY_POOL_FLAGS_GPU_CACHED};
     mtl_pool_add(mem, LEN);
@@ -59,19 +58,27 @@ int main(void) { @autoreleasepool {
     CHECK(entry(old,20)==dummy(old),"never-read ID remains dummy at zero room");
     mtl_reg_tex(10,&t[1],NULL);
     id<MTLBuffer> direct=table();
-    CHECK(pool_seen(10)==keep,"live replacement retains history only with fix enabled");
-    CHECK((entry(direct,10)!=dummy(direct))==keep,"live replacement materialized in its first table");
-    if (keep) CHECK(pixel_is(10,0x22),"live replacement table names new pixels");
+    CHECK(pool_seen(10),"live replacement keeps the read mark");
+    CHECK(entry(direct,10)!=dummy(direct),"live replacement materialized in its first table");
+    CHECK(pixel_is(10,0x22),"live replacement table names new pixels");
     CHECK(entry(old,10)==original,"previous table retains its original entry");
-    // Establish a made, read ID in either mode before the finalize/re-register case.
-    read_mark(10); (void)table();
+    (void)table();
     mtl_tex_release(&t[1]);
     CHECK(g_treg[10].retired && !g_treg[10].view,"Finalize drops cached view while descriptor stays retired");
     mtl_reg_tex(10,&t[2],NULL);
     id<MTLBuffer> retired=table();
-    CHECK(pool_seen(10)==keep,"finalize-then-replace retains history only with fix enabled");
-    CHECK((entry(retired,10)!=dummy(retired))==keep,"retired replacement materialized in first table");
-    if (keep) CHECK(pixel_is(10,0x33),"retired replacement has replacement pixels");
+    CHECK(pool_seen(10),"finalize-then-replace keeps the read mark");
+    CHECK(entry(retired,10)!=dummy(retired),"retired replacement materialized in first table");
+    CHECK(pixel_is(10,0x33),"retired replacement has replacement pixels");
+    // A read ID whose texture waits for the read budget (no view, not retired) keeps its mark too.
+    mtl_reg_tex(30,&t[3],NULL); read_mark(30);
+    os_unfair_lock_lock(&g_rmu);
+    g_walk_frame = atomic_load(&g_cur_frame); g_walk_req = POOL_REQ_BYTES; g_seen_sub = ~0ull; pool_seen_scan();
+    os_unfair_lock_unlock(&g_rmu);
+    CHECK(pool_seen(30) && !g_treg[30].view && !g_treg[30].retired,"read ID past the read budget holds no texture yet");
+    mtl_reg_tex(30,&t[6],NULL); id<MTLBuffer> waiting=table();
+    CHECK(pool_seen(30),"replacing a read ID with no made texture keeps the read mark");
+    CHECK(entry(waiting,30)!=dummy(waiting) && pixel_is(30,0x77),"its replacement materialized in first table");
     mtl_reg_tex(20,&t[4],NULL); id<MTLBuffer> unread=table();
     CHECK(!pool_seen(20) && entry(unread,20)==dummy(unread),"replacing unread ID does not invent a read mark");
     read_mark(10); (void)table(); mtl_reg_tex(10,&t[5],NULL); id<MTLBuffer> target=table();
@@ -80,7 +87,7 @@ int main(void) { @autoreleasepool {
     mtl_reg_tex(10,&t[0],NULL); id<MTLBuffer> reset=table();
     CHECK(!pool_seen(10),"empty then re-register does not resurrect history");
     (void)reset;
-    mtl_reg_tex(10,NULL,NULL); mtl_reg_tex(20,NULL,NULL);
+    mtl_reg_tex(10,NULL,NULL); mtl_reg_tex(20,NULL,NULL); mtl_reg_tex(30,NULL,NULL);
     for(int n=0;n<N;n++) if(n!=1) mtl_tex_release(&t[n]);
     mtl_pool_del(mem); mtl_drain(); munmap(mem,LEN);
     fprintf(stderr,"pool_seen_replace: %d checks, %d failed\n",checks,failed);

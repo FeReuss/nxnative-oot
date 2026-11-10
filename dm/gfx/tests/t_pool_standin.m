@@ -44,6 +44,7 @@ static void fill(const tex_t *t, uint8_t v, int pattern) {
 static id<MTLBuffer> level_of(id<MTLTexture> t, unsigned level, unsigned slice, size_t n, size_t row) {
     if (!t || level >= t.mipmapLevelCount || slice >= t.arrayLength) return nil;
     id<MTLBuffer> b = [g_dev newBufferWithLength:n options:MTLResourceStorageModeShared];
+    if (!b) return nil;
     id<MTLCommandBuffer> cb = q_cb(); id<MTLBlitCommandEncoder> bl = [cb blitCommandEncoder];
     [bl copyFromTexture:t sourceSlice:slice sourceLevel:level sourceOrigin:MTLOriginMake(0, 0, 0) sourceSize:MTLSizeMake(MAX(t.width >> level, 1u), MAX(t.height >> level, 1u), 1)
                toBuffer:b destinationOffset:0 destinationBytesPerRow:row destinationBytesPerImage:n];
